@@ -5,7 +5,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-set(BUILD_EXAMPLE OFF CACHE BOOL "Build example")
+set(BUILD_EXAMPLE ON CACHE BOOL "Build example")
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -21,13 +21,6 @@ set(dependencies
     rclcpp
     geometry_msgs
 )
-
-add_library(utils 
-    STATIC
-    include/utils/utils.h
-)
-set_target_properties(utils PROPERTIES LINKER_LANGUAGE CXX)
-target_compile_features(utils PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 add_library(base_chassis 
     STATIC 
@@ -45,21 +38,36 @@ add_library(omni_chassis
     src/omni_chassis.cpp
     include/chassis_lib/omni_chassis.h
 )
-target_link_libraries(omni_chassis PRIVATE utils base_chassis)
+target_link_libraries(omni_chassis PRIVATE base_chassis motor_lib)
 target_include_directories(omni_chassis PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 target_compile_features(omni_chassis PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
+add_library(steering_chassis
+    STATIC   
+    src/steering_chassis.cpp
+    include/chassis_lib/steering_chassis.h 
+)
+ament_target_dependencies(steering_chassis rclcpp geometry_msgs)
+target_link_libraries(steering_chassis base_chassis)
+target_include_directories(steering_chassis PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(steering_chassis PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+
 if (BUILD_EXAMPLE)
-    add_executable(omni_chassis_example src/omni_chassis_example.cpp)
-    target_link_libraries(omni_chassis_example PRIVATE omni_chassis)
-    target_compile_features(omni_chassis_example PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-    install(TARGETS omni_chassis_example
+    add_executable(chassis_example example/chassis_example.cpp)
+    ament_target_dependencies(chassis_example PUBLIC rclcpp PUBLIC geometry_msgs)
+    target_link_libraries(chassis_example PRIVATE omni_chassis steering_chassis)
+    target_compile_features(chassis_example PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+    install(TARGETS chassis_example
         DESTINATION lib/${PROJECT_NAME})
 endif()
 
 add_executable(chassis_node src/chassis_node.cpp)
+ament_target_dependencies(chassis_node PUBLIC rclcpp PUBLIC geometry_msgs)
+target_link_libraries(chassis_node PRIVATE omni_chassis steering_chassis bupt_can)
 target_include_directories(chassis_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)

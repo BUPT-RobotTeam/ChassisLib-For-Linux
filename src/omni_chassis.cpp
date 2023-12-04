@@ -1,8 +1,12 @@
 #include "chassis_lib/omni_chassis.h"
 #include "utils/utils.h"
 
-OmniChassis::OmniChassis(const uint32_t &board_id,const std::shared_ptr<Can> &can_handle)
+OmniChassis::OmniChassis(const std::string &pose_topic,const std::string &vel_topic,
+                        const uint32_t &board_id,const std::shared_ptr<Can> &can_handle)
+                            : Chassis(pose_topic,vel_topic)
 {
+    limit_acc = 1.0;
+    limit_vel = 1.0;
     dji_board = std::make_shared<DJIBoard>(board_id,can_handle);
 }
 

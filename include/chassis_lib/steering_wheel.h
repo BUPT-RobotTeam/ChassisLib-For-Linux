@@ -13,7 +13,7 @@ public:
     SteeringWheel(const int &can_id,const std::shared_ptr<Can> &can_handle=nullptr);
     ~SteeringWheel();
 
-    void sendCommand(const int &vel,const int &angle);
+    void sendCommand(const double &vel,const double &angle);
 };
 
 
