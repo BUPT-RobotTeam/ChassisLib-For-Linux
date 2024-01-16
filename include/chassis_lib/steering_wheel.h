@@ -3,17 +3,19 @@
 
 #include "bupt_can/bupt_can.h"
 #include <memory>
+#include <array>
+#include <chrono>
 
+// 舵轮两个一组  左一组，右一组
 class SteeringWheel
 {
 private:
     std::shared_ptr<Can> can_handle;
-    int can_id;
+    uint32_t control_id; // 控制器ID
 public:
-    SteeringWheel(const int &can_id,const std::shared_ptr<Can> &can_handle=nullptr);
+    SteeringWheel(const uint32_t &control_id,const std::shared_ptr<Can> &can_handle);
     ~SteeringWheel();
-
-    void sendCommand(const double &vel,const double &angle);
+    bool sendCommand(const std::array<int16_t,2> &angle,const std::array<int16_t,2> &vel);
 };
 
 

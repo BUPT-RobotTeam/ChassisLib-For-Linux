@@ -1,6 +1,8 @@
 #include "chassis_lib/omni_chassis.h"
 #include "utils/utils.h"
 
+#include<iostream>
+
 OmniChassis::OmniChassis(const std::string &pose_topic,const std::string &vel_topic,
                         const uint32_t &board_id,const std::shared_ptr<Can> &can_handle)
                             : Chassis(pose_topic,vel_topic)
@@ -39,6 +41,8 @@ void OmniChassis::execute()
     wheel_speed[1] = target_vel.linear.x - target_vel.angular.z * (length / 2);
     wheel_speed[2] = target_vel.linear.y + target_vel.angular.z * (width / 2);
     wheel_speed[3] = - target_vel.linear.x + target_vel.angular.z * (length / 2);
+
+    // std::cout<< "wheel_speed: " << wheel_speed[0] << " " << wheel_speed[1] << " " << wheel_speed[2] << " " << wheel_speed[3] << std::endl;
 
     // 发送控制报文
     for (int i=1;i<=4;i++)
