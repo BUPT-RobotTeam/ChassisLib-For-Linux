@@ -5,6 +5,7 @@
 const uint32_t SteeringChassis::CONTROL_L = 0x300;
 const uint32_t SteeringChassis::CONTROL_R = 0x301;
 const uint32_t SteeringChassis::HEART_BEAT_ID = 0x302;
+const std::array<int16_t,4> SteeringChassis::bias = {-88,-120,120,30};
 
 SteeringChassis::SteeringChassis(const std::string &pose_topic,const std::string &vel_topic,
                                  const std::shared_ptr<Can> &can_handle)
@@ -13,6 +14,7 @@ SteeringChassis::SteeringChassis(const std::string &pose_topic,const std::string
     // 逆时针顺序编号
     steering_wheels[0] = std::make_unique<SteeringWheel>(CONTROL_L,can_handle);  //左前左后
     steering_wheels[1] = std::make_unique<SteeringWheel>(CONTROL_R,can_handle);  //右后右前
+    last_angle = bias;
     sw_init_flag=false;
 
     can_handle->register_msg(HEART_BEAT_ID,Can::CAN_ID_STD,
@@ -65,14 +67,14 @@ void SteeringChassis::setParameter(const double &limit_vel, const double &limit_
 
     double theta = atan(length/width);
     double r=sqrt(width*width+length*length)/2;
-    mat[0]<< 1, 0, r*cos(-theta),
-             0, 1, r*sin(-theta);
-    mat[1]<< 1, 0, r*cos(+theta),
-             0, 1, r*sin(+theta);
-    mat[2]<< 1, 0, r*cos(M_PI-theta),
+    mat[0]<< 1, 0, r*cos(M_PI-theta),
              0, 1, r*sin(M_PI-theta);
-    mat[3]<< 1, 0, r*cos(theta-M_PI),
-             0, 1, r*sin(theta-M_PI);      
+    mat[1]<< 1, 0, r*cos(theta-M_PI),
+             0, 1, r*sin(theta-M_PI);
+    mat[2]<< 1, 0, r*cos(-theta),
+             0, 1, r*sin(-theta);
+    mat[3]<< 1, 0, r*cos(theta),
+             0, 1, r*sin(theta);      
                         
 }
 
@@ -102,8 +104,17 @@ void SteeringChassis::execute()
     for (int i = 0 ; i < 4 ; i++)
     {
         vel[i] = mat[i] * cmd_vel;
-        send_vel[i/2][i%2]=vel[i].norm()*10;
-        send_angle[i/2][i%2]=atan2(vel[i](1),vel[i](0))*6;
+
+        send_vel[i/2][i%2]=vel[i].norm();
+        send_vel[i/2][i%2]=send_vel[i/2][i%2]/(2*M_PI*wheel_radius)*60;
+
+        send_angle[i/2][i%2]=-(radToDeg(atan2(vel[i](1),vel[i](0))))+bias[i];
+        send_angle[i/2][i%2]=normalizeDeg(send_angle[i/2][i%2]);
+
+        if (abs(normalizeDeg(send_angle[i/2][i%2]-last_angle[i]))>abs(normalizeDeg(-send_angle[i/2][i%2]-last_angle[i])))
+            send_angle[i/2][i%2]=-send_angle[i/2][i%2],send_vel[i/2][i%2]=-send_vel[i/2][i%2];
+        
+        last_angle[i]=send_angle[i/2][i%2];
     }
     
     steering_wheels[0]->sendCommand(send_angle[0],send_vel[0]);

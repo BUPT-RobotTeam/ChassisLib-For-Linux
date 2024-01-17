@@ -11,6 +11,7 @@ class SteeringWheel
 {
 private:
     std::shared_ptr<Can> can_handle;
+    std::array<int16_t,2> last_angle;
     uint32_t control_id; // 控制器ID
 public:
     SteeringWheel(const uint32_t &control_id,const std::shared_ptr<Can> &can_handle);

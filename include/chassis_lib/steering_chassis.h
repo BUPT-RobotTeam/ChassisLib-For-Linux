@@ -16,9 +16,10 @@ public:
     static const uint32_t CONTROL_L;
     static const uint32_t CONTROL_R;
     static const uint32_t HEART_BEAT_ID;
+    static const std::array<int16_t,4> bias;
 private:
     std::array<std::unique_ptr<SteeringWheel>, 2> steering_wheels;
-
+    std::array<int16_t, 4> last_angle;
     std::array<std::atomic_bool, 4> sw_state; 
     std::condition_variable sw_init_cv;
     std::atomic_bool sw_init_flag;
