@@ -97,10 +97,30 @@ void SteeringChassis::execute()
     Eigen::Vector3<double> cmd_vel;
     Eigen::Vector2<double> vel[4];
 
+    if (target_vel.linear.x == 0 && target_vel.linear.y == 0 && target_vel.angular.z == 0)
+    {
+        for (int i = 0 ; i < 4 ; i++)
+        {
+            vel[i] << 0,0;
+        }
+        std::array<std::array<int16_t,2>,2> send_vel_buffer;
+        std::array<std::array<int16_t,2>,2> send_angle_buffer;
+        for (int i = 0 ; i < 4 ; i++)
+        {
+            send_vel_buffer[i/2][i%2]=0;
+            send_angle_buffer[i/2][i%2]=last_angle[i]*10;
+        }
+        steering_wheels[0]->sendCommand(send_angle_buffer[0],send_vel_buffer[0]);
+        steering_wheels[1]->sendCommand(send_angle_buffer[1],send_vel_buffer[1]);
+        return;
+    }
+
     cmd_vel << target_vel.linear.x,target_vel.linear.y,target_vel.angular.z;
 
-    std::array<std::array<int16_t,2>,2> send_vel;
-    std::array<std::array<int16_t,2>,2> send_angle;
+    std::array<std::array<double,2>,2> send_vel;
+    std::array<std::array<double,2>,2> send_angle;
+    std::array<std::array<int16_t,2>,2> send_vel_buffer;
+    std::array<std::array<int16_t,2>,2> send_angle_buffer;
     for (int i = 0 ; i < 4 ; i++)
     {
         vel[i] = mat[i] * cmd_vel;
@@ -111,12 +131,19 @@ void SteeringChassis::execute()
         send_angle[i/2][i%2]=-(radToDeg(atan2(vel[i](1),vel[i](0))))+bias[i];
         send_angle[i/2][i%2]=normalizeDeg(send_angle[i/2][i%2]);
 
-        if (abs(normalizeDeg(send_angle[i/2][i%2]-last_angle[i]))>abs(normalizeDeg(-send_angle[i/2][i%2]-last_angle[i])))
-            send_angle[i/2][i%2]=-send_angle[i/2][i%2],send_vel[i/2][i%2]=-send_vel[i/2][i%2];
+        if (abs(normalizeDeg(send_angle[i/2][i%2]-last_angle[i])) > abs(normalizeDeg(send_angle[i/2][i%2]+180-last_angle[i])))
+        {
+            send_angle[i/2][i%2]=normalizeDeg(send_angle[i/2][i%2]+180),send_vel[i/2][i%2]=-send_vel[i/2][i%2];
+            RCLCPP_INFO(this->get_logger(),"Steering wheel %d reverse! %f",i,send_angle[i/2][i%2]+bias[i]);
+        }
         
         last_angle[i]=send_angle[i/2][i%2];
+
+        send_vel_buffer[i/2][i%2]=send_vel[i/2][i%2]*6;
+        send_angle_buffer[i/2][i%2]=send_angle[i/2][i%2]*10;
     }
-    
-    steering_wheels[0]->sendCommand(send_angle[0],send_vel[0]);
-    steering_wheels[1]->sendCommand(send_angle[1],send_vel[1]);
+        
+
+    steering_wheels[0]->sendCommand(send_angle_buffer[0],send_vel_buffer[0]);
+    steering_wheels[1]->sendCommand(send_angle_buffer[1],send_vel_buffer[1]);
 }
